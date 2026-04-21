@@ -76,4 +76,24 @@ export default async function handler(req, res) {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
-      body: JSON.stringify({ sql_query: parsed.sql.replac
+      body: JSON.stringify({ sql_query: parsed.sql.replace(/;\s*$/, '') })
+    })
+
+    let rows = []
+    if (r2.ok) {
+      const data = await r2.json()
+      if (Array.isArray(data) && data.length > 0 && data[0].execute_sql !== undefined) {
+        rows = data[0].execute_sql || []
+      } else if (Array.isArray(data)) {
+        rows = data
+      }
+    } else {
+      const errText = await r2.text()
+      throw new Error(`DB error: ${errText}`)
+    }
+
+    res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
