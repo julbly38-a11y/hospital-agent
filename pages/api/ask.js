@@ -1,48 +1,36 @@
-const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні ЛСМД. Відповідаєш ТІЛЬКИ валідним JSON: {"sql": "SELECT ...", "explanation": "опис"}
+const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні. Відповідаєш на питання українською та російською мовою.
 
-ТАБЛИЦІ — точні колонки:
+Таблиці бази даних:
 
-lsmd_staging: cases, hosp_type, e_referral, admission_at(text), patient_id, patient_name, patient_birthday, patient_age, patient_gender, patient_category, patient_address, patient_phone, icd_admission, diagnosis_admission, dept_admission, icd_main, diagnosis_main, dept_discharge, discharge_at(text), bed_days, discharge_status, doctor_name, doctor_specialty, doctor_dept, doctor_position, operation_code, region, district, city, id
+encounters (20491 рядків) — госпіталізації:
+  encounter_id, hosp_type, admission_at (timestamp), discharge_at (timestamp),
+  bed_days, discharge_status, icd_main, diagnosis_main, icd_admission, diagnosis_admission,
+  operation_code, death_verification, patient_pk, doctor_id, dept_admission_id, dept_discharge_id, doctor_id_imputed
 
-encounters: encounter_id, hosp_type, e_referral, admission_at(timestamp), discharge_at(timestamp), bed_days, discharge_status, icd_admission, diagnosis_admission, icd_main, diagnosis_main, operation_code, death_verification, patient_pk, doctor_id, dept_admission_id, dept_discharge_id, doctor_id_imputed
+patients (15427):
+  patient_pk, patient_name, patient_age, patient_gender, patient_category, region, district, city
 
-patients: patient_pk, patient_source_key, patient_id, patient_name, patient_birthday, patient_age, patient_gender, patient_category, patient_address, patient_phone, passport_type, region, district, city
+doctors (198):
+  doctor_id, doctor_name, doctor_specialty, doctor_position
 
-doctors: doctor_id, doctor_name, doctor_specialty, doctor_position, employee_status, home_department_id, doctor_gender, doctor_birthday, doctor_email, doctor_phone
+departments (14):
+  department_id, department_name
 
-departments: department_id, department_name, department_phone
+Зв'язки:
+  encounters.patient_pk → patients.patient_pk
+  encounters.doctor_id → doctors.doctor_id
+  encounters.dept_admission_id → departments.department_id
 
-VIEW — точні колонки:
+ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON:
+{"sql": "SELECT ...", "explanation": "Короткий опис"}
 
-v_hospital_summary: всього_госпіталізацій, унікальних_пацієнтів, активних_лікарів, відділень, середні_ліжкодні, всього_ліжкодні, летальних, летальність_відсоток, екстрених, планових, відсоток_екстрених, з_операцією, хірургічна_активність, переведених, з_погіршенням, перша_госпіталізація, остання_госпіталізація
-
-v_department_full: відділення, завідувач, штат_лікарів, всього_госпіталізацій, унікальних_пацієнтів, екстрених, планових, відсоток_ургенції, всього_ліжкодні, середній_ліжкодень, макс_ліжкодень, летальних, летальність_відсоток, летальних_екстрених, з_поліпшенням, без_змін, з_погіршенням, переведених, операцій, хірургічна_активність, середній_вік, жінок, чоловіків, дітей, літніх_60_плюс, з_направленням, без_направлення
-
-v_doctor_stats: лікар, спеціальність, посада, відділення, госпіталізацій, пацієнтів, середні_ліжкодні, всього_ліжкодні, летальних, летальність_відсоток, операцій, екстрених, планових
-
-v_diagnosis_stats: МКХ_код, діагноз, випадків, пацієнтів, середні_ліжкодні, летальних, летальність_відсоток, екстрених, з_операцією
-
-v_monthly_stats: місяць, госпіталізацій, пацієнтів, середні_ліжкодні, всього_ліжкодні, летальних, летальність_відсоток, екстрених, планових, операцій, переведених
-
-v_urgency_stats: відділення, всього_госпіталізацій, екстрених, планових, відсоток_ургенції, екстрених_летальних, планових_летальних, середній_ліжкодень_екстрених, середній_ліжкодень_планових, екстрених_переведених, екстрених_з_операцією, хірургічна_активність_ургенції
-
-v_peak_by_hour: година, всього, екстрених, відсоток_екстрених, летальних
-v_peak_by_weekday: день_номер, день_тижня, всього, екстрених, відсоток_екстрених, летальних, середній_ліжкодень
-v_readmissions: пацієнт, вік, стать, кількість_госпіталізацій, перша_госпіталізація, остання_госпіталізація, всього_ліжкодні, діагнози
-v_region_stats: регіон, район, госпіталізацій, пацієнтів, середні_ліжкодні, летальних
-v_patient_stats: стать, вікова_група, госпіталізацій, пацієнтів, середні_ліжкодні, летальних, летальність_відсоток
-
-ПРАВИЛА:
-- Тільки SELECT, без крапки з комою в кінці
-- Для лікаря: WHERE лікар ILIKE '%прізвище%' (у v_doctor_stats) або WHERE doctor_name ILIKE '%прізвище%' (у lsmd_staging)
-- Дані за 2025 рік. "Останній місяць" = >= '2025-12-01', "квартал" = >= '2025-10-01'
-- Смерть: discharge_status = 'Помер'
-- LIMIT 50 для списків
-- ЗАВЖДИ використовуй View для статистики`
-- ПРИКЛАД летальність по відділеннях: SELECT відділення, летальних, летальність_відсоток FROM v_department_full ORDER BY летальність_відсоток DESC
-- ПРИКЛАД статистика лікаря: SELECT * FROM v_doctor_stats WHERE лікар ILIKE '%Дубець%'
-- ПРИКЛАД загальна статистика: SELECT * FROM v_hospital_summary
-- ПРИКЛАД навантаження по годинах: SELECT * FROM v_peak_by_hour ORDER BY всього DESC
+Правила:
+- Тільки SELECT
+- Пошук лікаря: doctor_name ILIKE '%прізвище%'
+- Дані за 2025 рік. "Останній місяць" = admission_at >= '2025-12-01'
+- Смерть: discharge_status ILIKE '%помер%'
+- Лікар: COALESCE(e.doctor_id, e.doctor_id_imputed)
+- LIMIT 50 для списків`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -56,14 +44,14 @@ export default async function handler(req, res) {
       { role: 'user', content: question }
     ]
 
-    const r1 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const r1 = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'gpt-4o-mini',
         messages,
         max_tokens: 1000
       })
