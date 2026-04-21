@@ -27,6 +27,7 @@ const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази да
 - Дані за 2025 рік. "Останній місяць" = >= '2025-12-01', "квартал" = >= '2025-10-01'
 - Смерть: discharge_status = 'Помер'
 - LIMIT 50 для списків
+- НЕ додавай крапку з комою в кінці SQL
 
 ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON:
 {"sql": "SELECT ...", "explanation": "Короткий опис"}`
@@ -64,6 +65,8 @@ export default async function handler(req, res) {
     try { parsed = JSON.parse(raw) }
     catch { const m = raw.match(/\{[\s\S]*\}/); parsed = JSON.parse(m[0]) }
 
+    const sql = parsed.sql.replace(/;\s*$/, '')
+
     const r2 = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql`, {
       method: 'POST',
       headers: {
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
-      body: JSON.stringify({ sql_query: parsed.sql })
+      body: JSON.stringify({ sql_query: sql })
     })
 
     let rows = []
@@ -87,7 +90,7 @@ export default async function handler(req, res) {
       throw new Error(`DB error: ${errText}`)
     }
 
-    res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
+    res.status(200).json({ sql, explanation: parsed.explanation, rows })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
