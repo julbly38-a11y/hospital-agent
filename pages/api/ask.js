@@ -1,6 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
-
 const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні. Відповідаєш на питання українською та російською мовою.
 
 Таблиці бази даних:
@@ -20,9 +17,6 @@ doctors (198):
 departments (14):
   department_id, department_name
 
-schedules:
-  schedule_id, doctor_id, shift_date, shift_type (D/CALL24/EVENING), duration_hours
-
 Зв'язки:
   encounters.patient_pk → patients.patient_pk
   encounters.doctor_id → doctors.doctor_id
@@ -34,7 +28,7 @@ schedules:
 Правила:
 - Тільки SELECT
 - Пошук лікаря: doctor_name ILIKE '%прізвище%'
-- Дані за 2025 рік. "Останній місяць" = admission_at >= '2025-12-01', "тиждень" = admission_at >= '2025-12-25'
+- Дані за 2025 рік. "Останній місяць" = admission_at >= '2025-12-01', "тиждень" = admission_at >= '2025-12-25', "квартал" = admission_at >= '2025-10-01'
 - Смерть: discharge_status ILIKE '%помер%' OR discharge_status ILIKE '%смерт%' OR discharge_status ILIKE '%летальн%'
 - Лікар в encounters: COALESCE(e.doctor_id, e.doctor_id_imputed)
 - LIMIT 50 для списків`
@@ -45,46 +39,46 @@ export default async function handler(req, res) {
   if (!question) return res.status(400).json({ error: 'Немає питання' })
 
   try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...history,
+      { role: 'user', content: question }
+    ]
 
-    const r1 = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        ...history,
-        { role: 'user', content: question }
-      ]
+    const r1 = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: 1000
+      })
     })
 
-    const raw = r1.content[0].text
+    const d1 = await r1.json()
+    const raw = d1.choices?.[0]?.message?.content || ''
+
     let parsed
     try { parsed = JSON.parse(raw) }
     catch { const m = raw.match(/\{[\s\S]*\}/); parsed = JSON.parse(m[0]) }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    )
-
-    const { data, error } = await supabase.rpc('execute_sql', {
-      sql_query: parsed.sql
+    const r2 = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': process.env.SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
+      },
+      body: JSON.stringify({ sql_query: parsed.sql })
     })
 
     let rows = []
-    if (!error && data) {
-      rows = data
-    } else {
-      const resp = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': process.env.SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
-        },
-        body: JSON.stringify({ sql_query: parsed.sql })
-      })
-      if (resp.ok) rows = await resp.json()
+    if (r2.ok) {
+      const data = await r2.json()
+      rows = Array.isArray(data) ? data : []
     }
 
     res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
