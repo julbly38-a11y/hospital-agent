@@ -39,6 +39,10 @@ v_patient_stats: стать, вікова_група, госпіталізаці
 - Смерть: discharge_status = 'Помер'
 - LIMIT 50 для списків
 - ЗАВЖДИ використовуй View для статистики`
+- ПРИКЛАД летальність по відділеннях: SELECT відділення, летальних, летальність_відсоток FROM v_department_full ORDER BY летальність_відсоток DESC
+- ПРИКЛАД статистика лікаря: SELECT * FROM v_doctor_stats WHERE лікар ILIKE '%Дубець%'
+- ПРИКЛАД загальна статистика: SELECT * FROM v_hospital_summary
+- ПРИКЛАД навантаження по годинах: SELECT * FROM v_peak_by_hour ORDER BY всього DESC
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
