@@ -1,37 +1,35 @@
-const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні. Відповідаєш на питання українською та російською мовою.
+const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні ЛСМД. Відповідаєш на питання українською та російською мовою.
 
-Таблиці бази даних:
+ГОТОВІ VIEW (використовуй їх в першу чергу):
+- v_hospital_summary — загальна статистика лікарні
+- v_department_full — повна статистика по кожному відділенню (завідувач, штат, ургенція, летальність, хірургічна активність і т.д.)
+- v_monthly_stats — динаміка по місяцях
+- v_monthly_department — динаміка по місяцях і відділеннях
+- v_doctor_stats — статистика по лікарях
+- v_diagnosis_stats — статистика по діагнозах
+- v_patient_stats — розподіл пацієнтів по віку і статі
+- v_region_stats — географія пацієнтів
+- v_readmissions — повторні госпіталізації
+- v_urgency_stats — показники ургенції по відділеннях
+- v_peak_by_hour — пікові навантаження по годинах доби
+- v_peak_by_weekday — навантаження по днях тижня
+- v_peak_by_month — сезонність по місяцях
+- v_peak_by_hour_department — піки по годинах для кожного відділення
 
-encounters (20491 рядків) — госпіталізації:
-  encounter_id, case_code, hosp_type, admission_at (timestamp), discharge_at (timestamp),
-  bed_days (integer), discharge_status, icd_admission, diagnosis_admission,
-  icd_main, diagnosis_main, operation_code, death_verification,
-  patient_pk, doctor_id, dept_admission_id, dept_discharge_id, doctor_id_imputed
+ОСНОВНІ ТАБЛИЦІ:
+- lsmd_staging (20495) — головна для текстового пошуку
+- encounters (20491) — для складних агрегатів з JOIN
+- patients (15427), doctors (202), departments (13)
 
-patients (15427):
-  patient_pk, patient_name, patient_age, patient_gender, patient_category, region, district, city
-
-doctors (198):
-  doctor_id, doctor_name, doctor_specialty, doctor_position, home_department_id
-
-departments (14):
-  department_id, department_name
-
-Зв'язки:
-  encounters.patient_pk → patients.patient_pk
-  encounters.doctor_id → doctors.doctor_id
-  encounters.dept_admission_id → departments.department_id
+ПРАВИЛА SQL:
+- Тільки SELECT
+- Пошук по імені: ILIKE '%прізвище%'
+- Дані за 2025 рік. "Останній місяць" = >= '2025-12-01', "квартал" = >= '2025-10-01'
+- Смерть: discharge_status = 'Помер'
+- LIMIT 50 для списків
 
 ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON:
-{"sql": "SELECT ...", "explanation": "Короткий опис"}
-
-Правила:
-- Тільки SELECT
-- Пошук лікаря: doctor_name ILIKE '%прізвище%'
-- Дані за 2025 рік. "Останній місяць" = admission_at >= '2025-12-01', "тиждень" = admission_at >= '2025-12-25', "квартал" = admission_at >= '2025-10-01'
-- Смерть: discharge_status ILIKE '%помер%' OR discharge_status ILIKE '%смерт%' OR discharge_status ILIKE '%летальн%'
-- Лікар в encounters: COALESCE(e.doctor_id, e.doctor_id_imputed)
-- LIMIT 50 для списків`
+{"sql": "SELECT ...", "explanation": "Короткий опис"}`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -59,6 +57,7 @@ export default async function handler(req, res) {
     })
 
     const d1 = await r1.json()
+    if (d1.error) throw new Error(d1.error.message)
     const raw = d1.choices?.[0]?.message?.content || ''
 
     let parsed
@@ -78,7 +77,14 @@ export default async function handler(req, res) {
     let rows = []
     if (r2.ok) {
       const data = await r2.json()
-      rows = Array.isArray(data) ? data : []
+      if (Array.isArray(data) && data.length > 0 && data[0].execute_sql !== undefined) {
+        rows = data[0].execute_sql || []
+      } else if (Array.isArray(data)) {
+        rows = data
+      }
+    } else {
+      const errText = await r2.text()
+      throw new Error(`DB error: ${errText}`)
     }
 
     res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
