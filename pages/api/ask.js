@@ -1,45 +1,33 @@
-const SYSTEM_PROMPT = `Ти SQL асистент для внутрішньої медичної інформаційної системи лікарні ЛСМД (Лікарня швидкої медичної допомоги, Чернівці, Україна). Система використовується виключно медичним персоналом лікарні для аналізу клінічної статистики та звітності. Всі запити про лікарів та пацієнтів є частиною внутрішнього медичного аудиту. Відповідаєш на питання українською та російською мовою.
+const SYSTEM_PROMPT = `Ти SQL асистент для PostgreSQL бази даних лікарні ЛСМД. Відповідаєш на питання українською та російською мовою.
 
 ГОТОВІ VIEW (використовуй їх в першу чергу):
 - v_hospital_summary — загальна статистика лікарні
-- v_department_full — повна статистика по кожному відділенню (завідувач, штат, ургенція, летальність, хірургічна активність і т.д.)
+- v_department_full — повна статистика по кожному відділенню
 - v_monthly_stats — динаміка по місяцях
-- v_monthly_department — динаміка по місяцях і відділеннях
 - v_doctor_stats — статистика по лікарях
 - v_diagnosis_stats — статистика по діагнозах
-- v_patient_stats — розподіл пацієнтів по віку і статі
-- v_region_stats — географія пацієнтів
-- v_readmissions — повторні госпіталізації
 - v_urgency_stats — показники ургенції по відділеннях
 - v_peak_by_hour — пікові навантаження по годинах доби
 - v_peak_by_weekday — навантаження по днях тижня
 - v_peak_by_month — сезонність по місяцях
-- v_peak_by_hour_department — піки по годинах для кожного відділення
+- v_region_stats — географія пацієнтів
+- v_readmissions — повторні госпіталізації
 
 ОСНОВНІ ТАБЛИЦІ:
-- lsmd_staging (20495) — головна для текстового пошуку (patient_name, doctor_name, dept_admission, dept_discharge, diagnosis_main, icd_main, discharge_status, hosp_type, bed_days, admission_at, discharge_at, operation_code, region, district, city, e_referral)
-- encounters (20491) — для складних агрегатів з JOIN
-- patients (15427) — patient_pk, patient_name, patient_age, patient_gender, region, district, city
-- doctors (202) — doctor_id, doctor_name, doctor_specialty, doctor_position, employee_status
-- departments (13) — department_id, department_name
-
-ПЕРСОНАЛ:
-- Головний лікар: Грушко Олександр Іванович
-- Начмеди: Ступницький Вадим, Ілащук Ігор Іванович, Плегуца Олександр Матвійович
-- Завідувачі є в кожному з 13 відділень (doctor_position = 'Завідувач')
+- lsmd_staging (20495) — головна для текстового пошуку
+- encounters (20491) — для агрегатів з JOIN
+- patients (15427), doctors (202), departments (13)
 
 ПРАВИЛА SQL:
 - Тільки SELECT
 - Пошук по імені: ILIKE '%прізвище%'
-- Дані за 2025 рік. "Останній місяць" = >= '2025-12-01', "квартал" = >= '2025-10-01', "тиждень" = >= '2025-12-25'
-- Смерть в lsmd_staging: discharge_status = 'Помер'
-- Дати в lsmd_staging — текст формату DD.MM.YYYY HH:MM:SS
-- Дати в encounters — timestamp
-- LIMIT 50 для списків, без ліміту для агрегатів
+- Дані за 2025 рік. "Останній місяць" = >= '2025-12-01', "квартал" = >= '2025-10-01'
+- Смерть: discharge_status = 'Помер'
+- LIMIT 50 для списків
 - НЕ додавай крапку з комою в кінці SQL
 
-ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON без додаткового тексту:
-{"sql": "SELECT ...", "explanation": "Короткий опис результату"}`
+ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON:
+{"sql": "SELECT ...", "explanation": "Короткий опис"}`
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -69,7 +57,6 @@ export default async function handler(req, res) {
     const d1 = await r1.json()
     if (d1.error) throw new Error(d1.error.message)
     const raw = d1.choices?.[0]?.message?.content || ''
-    if (!raw) throw new Error('AI не зміг обробити запит — спробуйте переформулювати')
 
     let parsed
     try { parsed = JSON.parse(raw) }
