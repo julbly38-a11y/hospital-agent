@@ -10,26 +10,30 @@ encounters (20491 рядків) — госпіталізації:
 patients (15427):
   patient_pk, patient_name, patient_age, patient_gender, patient_category, region, district, city
 
-doctors (198):
+doctors (202):
   doctor_id, doctor_name, doctor_specialty, doctor_position
 
-departments (14):
+departments (13):
   department_id, department_name
+
+lsmd_staging (20495) — для текстового пошуку:
+  patient_name, doctor_name, dept_admission, dept_discharge, diagnosis_main, icd_main,
+  discharge_status, hosp_type, bed_days, admission_at(text), operation_code, region, district, city
 
 Зв'язки:
   encounters.patient_pk → patients.patient_pk
   encounters.doctor_id → doctors.doctor_id
   encounters.dept_admission_id → departments.department_id
 
-ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON:
+ВАЖЛИВО: Відповідай ТІЛЬКИ валідним JSON без жодного тексту:
 {"sql": "SELECT ...", "explanation": "Короткий опис"}
 
 Правила:
-- Тільки SELECT
+- Тільки SELECT, без крапки з комою в кінці
 - Пошук лікаря: doctor_name ILIKE '%прізвище%'
 - Дані за 2025 рік. "Останній місяць" = admission_at >= '2025-12-01'
-- Смерть: discharge_status ILIKE '%помер%'
-- Лікар: COALESCE(e.doctor_id, e.doctor_id_imputed)
+- Смерть: discharge_status = 'Помер'
+- Лікар в encounters: COALESCE(e.doctor_id, e.doctor_id_imputed)
 - LIMIT 50 для списків`
 
 export default async function handler(req, res) {
@@ -44,14 +48,14 @@ export default async function handler(req, res) {
       { role: 'user', content: question }
     ]
 
-    const r1 = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r1 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         messages,
         max_tokens: 1000
       })
@@ -72,24 +76,4 @@ export default async function handler(req, res) {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
         'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
-      body: JSON.stringify({ sql_query: parsed.sql.replace(/;\s*$/, '') })
-    })
-
-    let rows = []
-    if (r2.ok) {
-      const data = await r2.json()
-      if (Array.isArray(data) && data.length > 0 && data[0].execute_sql !== undefined) {
-        rows = data[0].execute_sql || []
-      } else if (Array.isArray(data)) {
-        rows = data
-      }
-    } else {
-      const errText = await r2.text()
-      throw new Error(`DB error: ${errText}`)
-    }
-
-    res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-}
+      body: JSON.stringify({ sql_query: parsed.sql.replac
