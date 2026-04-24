@@ -198,3 +198,38 @@ export default function Home() {
                       <div className={styles.sqlBlock}>
                         <button className={styles.sqlToggle} onClick={() => setShowSql(p => ({...p, [i]: !p[i]}))}>
                           {showSql[i] ? '▲ сховати SQL' : '▼ показати SQL'}
+                        </button>
+                        {showSql[i] && <pre className={styles.sqlCode}>{msg.sql}</pre>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {loading && (
+              <div className={`${styles.msg} ${styles.assistant}`}>
+                <div className={styles.agentBubble}>
+                  <div className={styles.typing}><span/><span/><span/></div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          <div className={styles.inputArea}>
+            <input
+              className={styles.input}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && send(input)}
+              placeholder="Запитайте про дані лікарні..."
+              disabled={loading}
+            />
+            <button className={styles.sendBtn} onClick={() => send(input)} disabled={loading || !input.trim()}>→</button>
+          </div>
+        </main>
+      </div>
+    </>
+  )
+}
