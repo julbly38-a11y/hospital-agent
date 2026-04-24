@@ -99,12 +99,44 @@ function ResultView({ rows }) {
   )
 }
 
+function formatCost(cost) {
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return `$${cost.toFixed(6)}`
+  return `$${cost.toFixed(4)}`
+}
+
+function TokenBadge({ tokens }) {
+  if (!tokens) return null
+  return (
+    <div style={{
+      display: 'inline-flex',
+      gap: '10px',
+      marginTop: '10px',
+      padding: '6px 10px',
+      background: 'var(--bg2)',
+      borderRadius: '6px',
+      fontSize: '11px',
+      fontFamily: 'var(--mono)',
+      color: 'var(--text2)',
+      flexWrap: 'wrap'
+    }}>
+      <span>{tokens.provider}</span>
+      <span>↓ {tokens.tokens_in}</span>
+      <span>↑ {tokens.tokens_out}</span>
+      <span>Σ {tokens.tokens_total}</span>
+      <span style={{color: tokens.free ? '#16a34a' : 'var(--text2)'}}>
+        {tokens.free ? 'безкоштовно' : formatCost(tokens.cost_usd)}
+      </span>
+    </div>
+  )
+}
+
 export default function Home() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSql, setShowSql] = useState({})
-  const [requestCount, setRequestCount] = useState(0)
+  const [stats, setStats] = useState({ count: 0, tokensIn: 0, tokensOut: 0, cost: 0 })
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -131,9 +163,17 @@ export default function Home() {
       } else {
         setMessages(prev => [...prev, {
           role: 'assistant', content: question,
-          explanation: data.explanation, sql: data.sql, rows: data.rows || []
+          explanation: data.explanation, sql: data.sql, rows: data.rows || [],
+          tokens: data.tokens
         }])
-        setRequestCount(prev => prev + 1)
+        if (data.tokens) {
+          setStats(prev => ({
+            count: prev.count + 1,
+            tokensIn: prev.tokensIn + data.tokens.tokens_in,
+            tokensOut: prev.tokensOut + data.tokens.tokens_out,
+            cost: prev.cost + data.tokens.cost_usd
+          }))
+        }
       }
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', error: e.message }])
@@ -165,7 +205,13 @@ export default function Home() {
             <p>20,491 госпіталізацій</p>
             <p>15,427 пацієнтів</p>
             <p>13 відділень · 202 лікарі</p>
-            <p style={{marginTop: '8px', color: 'var(--text2)'}}>Запитів за сесію: <strong>{requestCount}</strong></p>
+            <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '10px', lineHeight: '1.8'}}>
+              <p style={{color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px'}}>Статистика сесії</p>
+              <p>Запитів: <strong>{stats.count}</strong></p>
+              <p>Токенів ↓: <strong>{stats.tokensIn.toLocaleString('en-US')}</strong></p>
+              <p>Токенів ↑: <strong>{stats.tokensOut.toLocaleString('en-US')}</strong></p>
+              <p>Ціна: <strong>{formatCost(stats.cost)}</strong></p>
+            </div>
           </div>
         </aside>
 
@@ -202,6 +248,7 @@ export default function Home() {
                         {showSql[i] && <pre className={styles.sqlCode}>{msg.sql}</pre>}
                       </div>
                     )}
+                    {msg.tokens && <TokenBadge tokens={msg.tokens} />}
                   </div>
                 )}
               </div>
