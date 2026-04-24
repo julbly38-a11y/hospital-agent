@@ -40,7 +40,6 @@ const PRICING = {
   'llama-3.3-70b-versatile': { in: 0, out: 0, provider: 'Groq', free: true },
   'gpt-4o-mini': { in: 0.15, out: 0.60, provider: 'OpenAI', free: false },
   'gpt-4o': { in: 2.50, out: 10.00, provider: 'OpenAI', free: false },
-  'claude-sonnet-4-20250514': { in: 3.00, out: 15.00, provider: 'Anthropic', free: false },
 }
 
 const MODEL = 'llama-3.3-70b-versatile'
@@ -70,6 +69,16 @@ export default async function handler(req, res) {
       })
     })
 
+    // Читаємо ліміти з заголовків
+    const limits = {
+      requests_remaining: r1.headers.get('x-ratelimit-remaining-requests'),
+      tokens_remaining: r1.headers.get('x-ratelimit-remaining-tokens'),
+      requests_limit: r1.headers.get('x-ratelimit-limit-requests'),
+      tokens_limit: r1.headers.get('x-ratelimit-limit-tokens'),
+      reset_requests: r1.headers.get('x-ratelimit-reset-requests'),
+      reset_tokens: r1.headers.get('x-ratelimit-reset-tokens')
+    }
+
     const d1 = await r1.json()
     if (d1.error) throw new Error(d1.error.message)
     const raw = d1.choices?.[0]?.message?.content || ''
@@ -85,7 +94,8 @@ export default async function handler(req, res) {
       tokens_out: usage.completion_tokens,
       tokens_total: usage.total_tokens,
       cost_usd: cost,
-      free: pricing.free
+      free: pricing.free,
+      limits
     }
 
     let parsed
