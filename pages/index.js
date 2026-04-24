@@ -105,20 +105,18 @@ function formatCost(cost) {
   return `$${cost.toFixed(4)}`
 }
 
+function formatNum(n) {
+  if (n === null || n === undefined || n === '') return '—'
+  return Number(n).toLocaleString('en-US')
+}
+
 function TokenBadge({ tokens }) {
   if (!tokens) return null
   return (
     <div style={{
-      display: 'inline-flex',
-      gap: '10px',
-      marginTop: '10px',
-      padding: '6px 10px',
-      background: 'var(--bg2)',
-      borderRadius: '6px',
-      fontSize: '11px',
-      fontFamily: 'var(--mono)',
-      color: 'var(--text2)',
-      flexWrap: 'wrap'
+      display: 'inline-flex', gap: '10px', marginTop: '10px',
+      padding: '6px 10px', background: 'var(--bg2)', borderRadius: '6px',
+      fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text2)', flexWrap: 'wrap'
     }}>
       <span>{tokens.provider}</span>
       <span>↓ {tokens.tokens_in}</span>
@@ -137,6 +135,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [showSql, setShowSql] = useState({})
   const [stats, setStats] = useState({ count: 0, tokensIn: 0, tokensOut: 0, cost: 0 })
+  const [limits, setLimits] = useState(null)
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -173,6 +172,7 @@ export default function Home() {
             tokensOut: prev.tokensOut + data.tokens.tokens_out,
             cost: prev.cost + data.tokens.cost_usd
           }))
+          if (data.tokens.limits) setLimits(data.tokens.limits)
         }
       }
     } catch (e) {
@@ -205,12 +205,20 @@ export default function Home() {
             <p>20,491 госпіталізацій</p>
             <p>15,427 пацієнтів</p>
             <p>13 відділень · 202 лікарі</p>
+            
             <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '10px', lineHeight: '1.8'}}>
-              <p style={{color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px'}}>Статистика сесії</p>
+              <p style={{color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px'}}>Сесія</p>
               <p>Запитів: <strong>{stats.count}</strong></p>
-              <p>Токенів ↓: <strong>{stats.tokensIn.toLocaleString('en-US')}</strong></p>
-              <p>Токенів ↑: <strong>{stats.tokensOut.toLocaleString('en-US')}</strong></p>
+              <p>Токенів ↓: <strong>{formatNum(stats.tokensIn)}</strong></p>
+              <p>Токенів ↑: <strong>{formatNum(stats.tokensOut)}</strong></p>
               <p>Ціна: <strong>{formatCost(stats.cost)}</strong></p>
+            </div>
+
+            <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '10px', lineHeight: '1.8'}}>
+              <p style={{color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px'}}>Ліміти Groq</p>
+              <p>Запитів: <strong>{formatNum(limits?.requests_remaining)}</strong> / {formatNum(limits?.requests_limit)}</p>
+              <p>Токенів: <strong>{formatNum(limits?.tokens_remaining)}</strong> / {formatNum(limits?.tokens_limit)}</p>
+              {limits?.reset_tokens && <p style={{color: 'var(--text3)'}}>оновл. через {limits.reset_tokens}</p>}
             </div>
           </div>
         </aside>
