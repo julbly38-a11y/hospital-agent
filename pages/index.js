@@ -8,7 +8,7 @@ const EXAMPLES = [
   'Пікові навантаження по годинах',
   'Топ 10 діагнозів за кількістю випадків',
   'Летальність по відділеннях',
-  'Нагрузка на лікаря',
+  'Скільки пролікувала доктор Дубець за грудень?',
   'Повторні госпіталізації — топ пацієнти',
   'Навантаження по днях тижня',
 ]
@@ -16,7 +16,6 @@ const EXAMPLES = [
 const COL_LABELS = {
   doctor_name: 'Лікар', patient_name: 'Пацієнт', department_name: 'Відділення',
   відділення: 'Відділення', завідувач: 'Завідувач', штат_лікарів: 'Штат',
-  dept_admission_name: 'Відділення прийому', dept_discharge_name: 'Відділення виписки',
   admission_at: 'Дата госпіталізації', discharge_at: 'Дата виписки',
   bed_days: 'Ліжко-днів', discharge_status: 'Статус виписки',
   diagnosis_main: 'Основний діагноз', icd_main: 'МКХ', patient_age: 'Вік',
@@ -35,7 +34,7 @@ function formatValue(key, val) {
     return new Date(val).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
   if (typeof val === 'number' && !Number.isInteger(val)) return val.toFixed(1)
-  if (typeof val === 'number') return val.toLocaleString('uk-UA')
+  if (typeof val === 'number') return String(val)
   return String(val)
 }
 
@@ -62,7 +61,7 @@ function ResultView({ rows }) {
     const val = rows[0][key]
     return (
       <div className={styles.bigCard}>
-        <p className={styles.bigNum}>{Number(val).toLocaleString('uk-UA')}</p>
+        <p className={styles.bigNum}>{val}</p>
         <p className={styles.bigLabel}>{colLabel(key)}</p>
       </div>
     )
@@ -105,6 +104,7 @@ export default function Home() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSql, setShowSql] = useState({})
+  const [requestCount, setRequestCount] = useState(0)
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -133,6 +133,7 @@ export default function Home() {
           role: 'assistant', content: question,
           explanation: data.explanation, sql: data.sql, rows: data.rows || []
         }])
+        setRequestCount(prev => prev + 1)
       }
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', error: e.message }])
@@ -164,6 +165,7 @@ export default function Home() {
             <p>20,491 госпіталізацій</p>
             <p>15,427 пацієнтів</p>
             <p>13 відділень · 202 лікарі</p>
+            <p style={{marginTop: '8px', color: 'var(--text2)'}}>Запитів за сесію: <strong>{requestCount}</strong></p>
           </div>
         </aside>
 
@@ -196,38 +198,3 @@ export default function Home() {
                       <div className={styles.sqlBlock}>
                         <button className={styles.sqlToggle} onClick={() => setShowSql(p => ({...p, [i]: !p[i]}))}>
                           {showSql[i] ? '▲ сховати SQL' : '▼ показати SQL'}
-                        </button>
-                        {showSql[i] && <pre className={styles.sqlCode}>{msg.sql}</pre>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {loading && (
-              <div className={`${styles.msg} ${styles.assistant}`}>
-                <div className={styles.agentBubble}>
-                  <div className={styles.typing}><span/><span/><span/></div>
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          <div className={styles.inputArea}>
-            <input
-              className={styles.input}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send(input)}
-              placeholder="Запитайте про дані лікарні..."
-              disabled={loading}
-            />
-            <button className={styles.sendBtn} onClick={() => send(input)} disabled={loading || !input.trim()}>→</button>
-          </div>
-        </main>
-      </div>
-    </>
-  )
-}
