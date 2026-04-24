@@ -36,6 +36,15 @@ lsmd_staging (20495) — для текстового пошуку:
 - Лікар в encounters: COALESCE(e.doctor_id, e.doctor_id_imputed)
 - LIMIT 50 для списків`
 
+const PRICING = {
+  'llama-3.3-70b-versatile': { in: 0, out: 0, provider: 'Groq', free: true },
+  'gpt-4o-mini': { in: 0.15, out: 0.60, provider: 'OpenAI', free: false },
+  'gpt-4o': { in: 2.50, out: 10.00, provider: 'OpenAI', free: false },
+  'claude-sonnet-4-20250514': { in: 3.00, out: 15.00, provider: 'Anthropic', free: false },
+}
+
+const MODEL = 'llama-3.3-70b-versatile'
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   const { question, history = [] } = req.body
@@ -55,7 +64,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: MODEL,
         messages,
         max_tokens: 1000
       })
@@ -64,6 +73,20 @@ export default async function handler(req, res) {
     const d1 = await r1.json()
     if (d1.error) throw new Error(d1.error.message)
     const raw = d1.choices?.[0]?.message?.content || ''
+
+    const usage = d1.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+    const pricing = PRICING[MODEL]
+    const cost = (usage.prompt_tokens / 1000000) * pricing.in + (usage.completion_tokens / 1000000) * pricing.out
+
+    const tokenInfo = {
+      provider: pricing.provider,
+      model: MODEL,
+      tokens_in: usage.prompt_tokens,
+      tokens_out: usage.completion_tokens,
+      tokens_total: usage.total_tokens,
+      cost_usd: cost,
+      free: pricing.free
+    }
 
     let parsed
     try { parsed = JSON.parse(raw) }
@@ -92,7 +115,12 @@ export default async function handler(req, res) {
       throw new Error(`DB error: ${errText}`)
     }
 
-    res.status(200).json({ sql: parsed.sql, explanation: parsed.explanation, rows })
+    res.status(200).json({ 
+      sql: parsed.sql, 
+      explanation: parsed.explanation, 
+      rows,
+      tokens: tokenInfo
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
