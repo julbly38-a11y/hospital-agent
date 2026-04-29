@@ -1,75 +1,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Parchment & ink palette */
-  --paper: #efe7d4;
-  --paper-2: #e6dcc3;
-  --paper-3: #ddd1b3;
-  --surface: #f6f0df;
-  --surface-lift: #faf5e6;
-  --border: #c9bd9c;
-  --border-soft: #d8cdb0;
-  --rule: #1a1612;
-
-  --ink: #14110d;
-  --ink-2: #4a3f2e;
-  --ink-3: #7a6e57;
-  --ink-4: #a89c80;
-
-  --oxblood: #6e1f1f;
-  --oxblood-deep: #4d1313;
-  --sage: #4a5a3c;
-  --ochre: #b4862c;
-  --signal: #c0392b;
-
-  /* Backwards-compat alias names used across the module */
-  --bg: var(--paper);
-  --bg2: var(--paper-2);
-  --text: var(--ink);
-  --text2: var(--ink-2);
-  --text3: var(--ink-3);
-  --accent: var(--oxblood);
-  --accent-bg: var(--ink);
-  --accent-text: var(--paper);
-  --red: var(--signal);
-
-  --serif: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
-  --sans:  'Geist', 'Söhne', system-ui, -apple-system, sans-serif;
-  --mono:  'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  --bg: #f5f4f0;
+  --bg2: #eeecea;
+  --surface: #ffffff;
+  --border: #d8d5cf;
+  --text: #1a1917;
+  --text2: #6b6760;
+  --text3: #9c9890;
+  --accent: #1a1917;
+  --accent-bg: #1a1917;
+  --accent-text: #f5f4f0;
+  --red: #c0392b;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
 }
 
-html, body {
-  height: 100%;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-feature-settings: 'ss01', 'ss02', 'cv11';
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-}
-
-/* Subtle paper grain — fixed, non-interactive */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(rgba(20, 17, 13, 0.045) 1px, transparent 1px),
-    radial-gradient(rgba(20, 17, 13, 0.025) 1px, transparent 1px);
-  background-size: 3px 3px, 7px 7px;
-  background-position: 0 0, 1px 2px;
-  mix-blend-mode: multiply;
-  opacity: 0.55;
-}
-
-::selection { background: var(--ink); color: var(--paper); }
-
-/* Refined scrollbars */
-* { scrollbar-width: thin; scrollbar-color: var(--ink-4) transparent; }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: var(--ink-4); border-radius: 0; }
-*::-webkit-scrollbar-track { background: transparent; }
-
-button { font-family: inherit; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
