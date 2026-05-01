@@ -10,16 +10,12 @@ const PROVIDERS = [
 ]
 
 const EXAMPLES = [
-  'Кількість клін.випадків за 2025',
-  'Кількість пацієнтів за 2025',
-  'Середній вік пацієнтів',
-  'Топ 7 діагнозів за кількістю випадків',
-  'Загальна нагрузка на лікаря',
-  'Летальність по лікарні',
-  'Кількість повторних госпіталізацій',
-  'Хто завідувач Центра невідкладної неврології?',
-
-  'Скільки пролікував лікар Блинду Ю.В. за березень 2025?',
+  'Загальна статистика лікарні',
+  'Показники по всіх відділеннях',
+  'Пікові навантаження по годинах',
+  'Топ 10 діагнозів за кількістю випадків',
+  'Летальність по відділеннях',
+  'Скільки пролікувала доктор Дубець за грудень?',
   'Повторні госпіталізації — топ пацієнти',
   'Навантаження по днях тижня',
 ]
@@ -142,7 +138,7 @@ export default function Home() {
         setMessages(prev => [...prev, { role: 'assistant', error: data.error }])
       } else {
         setMessages(prev => [...prev, {
-          role: 'assistant', content: data.explanation || '',
+          role: 'assistant', content: question,
           explanation: data.explanation, sql: data.sql, rows: data.rows || [],
           tokens: data.tokens
         }])
@@ -250,7 +246,7 @@ export default function Home() {
                     {msg.rows && <ResultView rows={msg.rows} />}
                     {msg.sql && (
                       <div className={styles.sqlBlock}>
-                        <button className={styles.sqlToggle} onClick={() => setShowSql(prev => ({...prev, [i]: !prev[i]}))}>
+                        <button className={styles.sqlToggle} onClick={() => setShowSql(p => ({...p, [i]: !p[i]}))}>
                           {showSql[i] ? '▲ сховати SQL' : '▼ показати SQL'}
                         </button>
                         {showSql[i] && <pre className={styles.sqlCode}>{msg.sql}</pre>}
