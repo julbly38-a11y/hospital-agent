@@ -198,4 +198,8 @@ export default async function handler(req, res) {
         free: cfg.pricing.free,
         limits: aiResult.limits
       }
+    })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 }
