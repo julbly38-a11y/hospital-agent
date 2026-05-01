@@ -55,7 +55,7 @@ const PROVIDERS = {
     keyEnv: 'OPENAI_API_KEY', format: 'openai'
   },
   anthropic: {
-    name: 'Anthropic', model: 'claude-sonnet-4-20250514',
+    name: 'Anthropic', model: 'claude-sonnet-4-6',
     pricing: { in: 3.00, out: 15.00, free: false },
     url: 'https://api.anthropic.com/v1/messages',
     keyEnv: 'ANTHROPIC_API_KEY', format: 'anthropic'
@@ -156,9 +156,13 @@ export default async function handler(req, res) {
     let parsed
     try { parsed = JSON.parse(aiResult.text) }
     catch {
-      const m = aiResult.text.match(/\{[\s\S]*\}/)
-      if (m) parsed = JSON.parse(m[0])
-      else throw new Error('Не вдалось розпарсити відповідь AI')
+      const m = aiResult.text.match(/\{[^{}]*\}/)
+      if (m) {
+        try { parsed = JSON.parse(m[0]) }
+        catch { throw new Error('Не вдалось розпарсити відповідь AI') }
+      } else {
+        throw new Error('Не вдалось розпарсити відповідь AI')
+      }
     }
 
     const r2 = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql`, {

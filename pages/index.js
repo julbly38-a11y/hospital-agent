@@ -142,7 +142,7 @@ export default function Home() {
         setMessages(prev => [...prev, { role: 'assistant', error: data.error }])
       } else {
         setMessages(prev => [...prev, {
-          role: 'assistant', content: question,
+          role: 'assistant', content: data.explanation || '',
           explanation: data.explanation, sql: data.sql, rows: data.rows || [],
           tokens: data.tokens
         }])
@@ -250,7 +250,7 @@ export default function Home() {
                     {msg.rows && <ResultView rows={msg.rows} />}
                     {msg.sql && (
                       <div className={styles.sqlBlock}>
-                        <button className={styles.sqlToggle} onClick={() => setShowSql(p => ({...p, [i]: !p[i]}))}>
+                        <button className={styles.sqlToggle} onClick={() => setShowSql(prev => ({...prev, [i]: !prev[i]}))}>
                           {showSql[i] ? '▲ сховати SQL' : '▼ показати SQL'}
                         </button>
                         {showSql[i] && <pre className={styles.sqlCode}>{msg.sql}</pre>}
