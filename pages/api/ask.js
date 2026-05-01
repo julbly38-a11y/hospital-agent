@@ -99,12 +99,12 @@ const PROVIDERS = {
 async function callAI(provider, messages) {
   const cfg = PROVIDERS[provider]
   const apiKey = process.env[cfg.keyEnv]
-  if (!apiKey) throw new Error(\`Немає ключа \${cfg.keyEnv} в Netlify\`)
+  if (!apiKey) throw new Error(`Немає ключа ${cfg.keyEnv} в Netlify`)
 
   if (cfg.format === 'openai') {
     const r = await fetch(cfg.url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': \`Bearer \${apiKey}\` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({ model: cfg.model, messages, max_tokens: 1000 })
     })
     const d = await r.json()
@@ -128,7 +128,7 @@ async function callAI(provider, messages) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }))
-    const r = await fetch(\`\${cfg.url}?key=\${apiKey}\`, {
+    const r = await fetch(`${cfg.url}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -195,12 +195,12 @@ export default async function handler(req, res) {
       else throw new Error('Не вдалось розпарсити відповідь AI')
     }
 
-    const r2 = await fetch(\`\${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql\`, {
+    const r2 = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/execute_sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': process.env.SUPABASE_SERVICE_KEY,
-        'Authorization': \`Bearer \${process.env.SUPABASE_SERVICE_KEY}\`
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
       },
       body: JSON.stringify({ sql_query: parsed.sql.replace(/;\s*$/, '') })
     })
@@ -215,7 +215,7 @@ export default async function handler(req, res) {
       }
     } else {
       const errText = await r2.text()
-      throw new Error(\`DB error: \${errText}\`)
+      throw new Error(`DB error: ${errText}`)
     }
 
     res.status(200).json({
